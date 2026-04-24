@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: [main]      # auto-release on every merge to main
+    branches: [main]      # auto-bump + release on every merge to main
     tags:
       - "v*"              # and on manual version tags
   workflow_dispatch:      # allow manual run from GitHub UI
@@ -19,18 +19,104 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Use a token that can push back to main (GITHUB_TOKEN is fine because
+          # we set `permissions: contents: write` above; `persist-credentials`
+          # defaults to true, which is what we need for the later `git push`).
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
+      - name: Auto-bump version
+        id: bump
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
+        run: |
+          set -euo pipefail
+
+          # Read the head commit subject to decide bump level.
+          MSG=$(git log -1 --pretty=%B)
+
+          # Skip release entirely if the commit asks for it.
+          if echo "$MSG" | grep -Eiq '\[skip release\]|\[no release\]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Commit asks to skip release."
+            exit 0
+          fi
+
+          # Decide bump level (default: patch).
+          LEVEL=patch
+          if echo "$MSG" | grep -Eq 'BREAKING CHANGE|\[major\]'; then
+            LEVEL=major
+          elif echo "$MSG" | grep -Eiq '\[minor\]|^feat(\(|:)'; then
+            LEVEL=minor
+          fi
+
+          CURRENT=$(python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')
+          IFS='.' read -r MAJ MIN PAT <<<"${CURRENT}"
+
+          case "$LEVEL" in
+            major) MAJ=$((MAJ+1)); MIN=0; PAT=0 ;;
+            minor) MIN=$((MIN+1)); PAT=0 ;;
+            patch) PAT=$((PAT+1)) ;;
+          esac
+          NEW="${MAJ}.${MIN}.${PAT}"
+          echo "Bumping ${CURRENT} -> ${NEW} (level=${LEVEL})"
+
+          # Update pyproject.toml and __init__.py in place.
+          python - <<PY
+          import pathlib, re
+          new = "${NEW}"
+          py = pathlib.Path("pyproject.toml")
+          py.write_text(re.sub(r'^version\s*=\s*".*"', f'version = "{new}"', py.read_text(), count=1, flags=re.M))
+          init = pathlib.Path("src/macbook_power/__init__.py")
+          init.write_text(re.sub(r'__version__\s*=\s*".*"', f'__version__ = "{new}"', init.read_text(), count=1))
+          PY
+
+          # Ensure CHANGELOG has an entry for the new version (add stub if missing).
+          if [[ -f CHANGELOG.md ]] && ! grep -q "^## v${NEW}\b" CHANGELOG.md; then
+            HEADLINE=$(echo "$MSG" | head -1 | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+            python - <<PY
+          import pathlib
+          new = "${NEW}"
+          headline = """${HEADLINE}""".strip().replace("\n", " ") or "Automated release"
+          path = pathlib.Path("CHANGELOG.md")
+          text = path.read_text()
+          stub = f"## v{new} — {headline}\n\n- (auto-generated; edit CHANGELOG.md and push to refine)\n\n"
+          # Insert before the first "## v" heading, or append if none.
+          marker = "\n## v"
+          idx = text.find(marker)
+          if idx == -1:
+              text = text.rstrip() + "\n\n" + stub
+          else:
+              text = text[:idx + 1] + stub + text[idx + 1:]
+          path.write_text(text)
+          PY
+          fi
+
+          # Commit the bump back to main with [skip release] so we don't loop.
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml src/macbook_power/__init__.py CHANGELOG.md || true
+          if git diff --cached --quiet; then
+            echo "No files changed by version bump (unexpected)."
+          else
+            git commit -m "chore(release): v${NEW} [skip release]"
+            git push origin HEAD:main
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "version=v${NEW}" >> "$GITHUB_OUTPUT"
+
       - name: Resolve release version
         id: version
+        if: steps.bump.outputs.skip != 'true'
         run: |
           set -euo pipefail
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
+          elif [[ -n "${{ steps.bump.outputs.version }}" ]]; then
+            VERSION="${{ steps.bump.outputs.version }}"
           else
             VERSION="v$(python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
           fi
@@ -39,6 +125,7 @@ jobs:
 
       - name: Check if tag already exists
         id: tag_check
+        if: steps.bump.outputs.skip != 'true'
         run: |
           set -euo pipefail
           if git rev-parse -q --verify "refs/tags/${{ steps.version.outputs.version }}" >/dev/null; then
@@ -50,12 +137,11 @@ jobs:
 
       - name: Resolve release name
         id: relname
-        if: steps.tag_check.outputs.exists == 'false'
+        if: steps.bump.outputs.skip != 'true' && steps.tag_check.outputs.exists == 'false'
         run: |
           set -euo pipefail
           VER="${{ steps.version.outputs.version }}"
           HEADLINE=""
-          # 1) Prefer a headline from CHANGELOG.md line like: "## v0.1.1 — Apple Silicon CPU temps"
           if [[ -f CHANGELOG.md ]]; then
             HEADLINE=$(awk -v v="${VER}" '
               $0 ~ "^##[[:space:]]+"v"([[:space:]]|$)" {
@@ -63,13 +149,10 @@ jobs:
                 print; exit
               }' CHANGELOG.md | tr -d '\r')
           fi
-          # 2) Fallback to the latest commit subject on main
           if [[ -z "${HEADLINE}" ]]; then
             HEADLINE=$(git log -1 --pretty=%s)
           fi
-          # 3) Sanitise
           HEADLINE=$(echo "${HEADLINE}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
-          # Build final name: "MacBook Power v0.1.1 — <headline>"
           if [[ -n "${HEADLINE}" && "${HEADLINE}" != "${VER}" ]]; then
             TITLE="MacBook Power ${VER} — ${HEADLINE}"
           else
@@ -79,17 +162,17 @@ jobs:
           echo "Release title: ${TITLE}"
 
       - name: Build distributions
-        if: steps.tag_check.outputs.exists == 'false'
+        if: steps.bump.outputs.skip != 'true' && steps.tag_check.outputs.exists == 'false'
         run: bash .scripts/build_dist.sh
 
       - name: Build macOS .app + .dmg
-        if: steps.tag_check.outputs.exists == 'false'
+        if: steps.bump.outputs.skip != 'true' && steps.tag_check.outputs.exists == 'false'
         run: |
           python -m pip install -e ".[mac]"
           bash .scripts/build_app.sh
 
       - name: Upload dist artifacts
-        if: steps.tag_check.outputs.exists == 'false'
+        if: steps.bump.outputs.skip != 'true' && steps.tag_check.outputs.exists == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: python-dist
@@ -99,7 +182,7 @@ jobs:
             dist/*.dmg
 
       - name: Create git tag
-        if: steps.tag_check.outputs.exists == 'false' && !startsWith(github.ref, 'refs/tags/')
+        if: steps.bump.outputs.skip != 'true' && steps.tag_check.outputs.exists == 'false' && !startsWith(github.ref, 'refs/tags/')
         run: |
           set -euo pipefail
           git config user.name  "github-actions[bot]"
@@ -108,7 +191,7 @@ jobs:
           git push origin "${{ steps.version.outputs.version }}"
 
       - name: Create GitHub release
-        if: steps.tag_check.outputs.exists == 'false'
+        if: steps.bump.outputs.skip != 'true' && steps.tag_check.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
