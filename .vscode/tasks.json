@@ -17,6 +17,74 @@
             "label": "lint",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/bin/python -m ruff check ."
+        },
+        {
+            "label": "build: wheel + sdist",
+            "type": "shell",
+            "command": "${workspaceFolder}/.scripts/build_dist.sh",
+            "options": {
+                "env": {
+                    "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
+                }
+            },
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            }
+        },
+        {
+            "label": "build: macOS .app + .dmg",
+            "type": "shell",
+            "command": "${workspaceFolder}/.scripts/build_app.sh",
+            "options": {
+                "env": {
+                    "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
+                }
+            },
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true,
+                "close": false
+            }
+        },
+        {
+            "label": "install: mac build deps",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python -m pip install -e '.[mac]'",
+            "problemMatcher": [],
+            "presentation": {
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            }
+        },
+        {
+            "label": "build: everything (wheel + app + dmg)",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "build: wheel + sdist",
+                "build: macOS .app + .dmg"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "clean dist/",
+            "type": "shell",
+            "command": "rm -rf ${workspaceFolder}/dist ${workspaceFolder}/build",
+            "problemMatcher": []
         }
     ]
 }

@@ -71,6 +71,23 @@
             },
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Build: macOS .app + .dmg",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "${workspaceFolder}/.scripts/build_app.sh",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build: wheel + sdist"
+        },
+        {
+            "name": "Build: wheel + sdist",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "${workspaceFolder}/.scripts/build_dist.sh",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
         }
     ]
 }
