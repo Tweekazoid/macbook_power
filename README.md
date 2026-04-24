@@ -6,94 +6,123 @@
 	macOS menubar battery monitor with live charge speed, ETA, real system power draw, and CPU/battery temperatures.
 </p>
 
-## Highlights
+---
 
-- Live percentage, charge speed, ETA, and **real system power draw** (from `PowerTelemetryData`) in the menu bar
-- **Apple Silicon CPU temperature** via `smctemp` (M1+), with auto-install button
-- Battery temperature from built-in AppleSmartBattery telemetry
-- Transparent template icon that matches light/dark menu bars
-- Checkbox-configurable title modules (state, time, power, temps, icons, °C/°F)
-- No-icon mode uses labeled tokens for readability (for example `ETA:15m | PWR:7.1W`)
-- **Menu stays open** when toggling options — tweak several settings without reopening
-- Python package setup with tests, linting, and VS Code debug tasks
-- GitHub Actions CI and automatic release workflow
+## Install
 
-## Configurable display options
+### Option A — Homebrew (recommended)
 
-All title components can be toggled on/off via menu checkboxes. The menu
-re-opens automatically after each toggle so you can tweak several settings in
-a single session.
-
-- **Charge State** (CHG / BAT / AC / FULL) – charging status and external power indicator
-- **Remaining Time** (ETA) – time to full charge or battery drain
-- **Power Draw** (watts) – real system power from `PowerTelemetryData.SystemPowerIn`
-  (non-zero even at 100 %), with fallback to battery flow
-- **Battery Temperature** – battery pack temperature in °C/°F (always available)
-- **CPU Temperature** – processor package temperature (optional, see below)
-- **Per-Metric Icons** – use symbols (⚡🔌🔋) instead of text labels
-- **Use Fahrenheit** – switch temperature unit globally
-
-## CPU Temperature (optional)
-
-Battery temperature is read from built-in macOS APIs via `ioreg`. However, CPU temperature requires third-party tools since macOS does not expose this data through standard APIs.
-
-**To enable CPU temperature display:**
-
-1. Enable the "🧠 CPU temperature" toggle in the app menu
-2. If the tool is not installed, an "⬇ Install CPU temperature tool" button will appear
-3. Click the button to auto-install via Homebrew (requires Homebrew to be installed)
-4. Alternatively, install manually via Homebrew:
+Homebrew handles the download, install, and Gatekeeper unquarantine for you:
 
 ```bash
-# Recommended: smctemp (works on Apple Silicon and Intel)
+brew tap tweekazoid/tap
+brew install --cask macbook-power
+```
+
+Upgrade to the latest release with:
+
+```bash
+brew upgrade --cask macbook-power
+```
+
+### Option B — Direct download (`.dmg`)
+
+1. Go to the [**Releases**](../../releases) page and download the latest
+   `MacBook-Power-<version>.dmg`.
+2. Open the `.dmg` and drag **MacBook Power.app** into your **Applications** folder.
+3. Eject the disk image.
+
+Because the app is **not code-signed by Apple**, macOS will quarantine it when
+downloaded from GitHub. On first launch you'll see *"Apple cannot check it for
+malicious software"*. To unblock it, either:
+
+- Right-click the app in **Applications** → **Open** → confirm, **or**
+- Clear the quarantine flag from a terminal:
+
+  ```bash
+  xattr -dr com.apple.quarantine "/Applications/MacBook Power.app"
+  ```
+
+> Homebrew users skip this step — `brew install --cask` removes the quarantine
+> flag automatically.
+
+### First launch — run it manually once
+
+After installing, **open the app manually the first time** from
+**Applications** (or Launchpad / Spotlight). A battery icon will appear in
+your menu bar.
+
+On first launch the app will ask whether you want it to **start automatically
+at login**. Say yes and it will be registered with macOS; from then on it
+comes up on its own whenever you log in.
+
+> If you ever need to toggle this later, use the 🚀 **Launch at Login** checkbox
+> in the app menu.
+
+### Updates
+
+Click the app icon → ⬆ **Check for Updates…** to compare your version against
+the latest GitHub release. If a newer `.dmg` is available, the app will fetch
+it to `~/Downloads` and open Finder for you — install it the same way as the
+first time.
+
+---
+
+## What you get
+
+- Live **percentage**, **charge speed**, **ETA**, and **real system power draw**
+  (non-zero even at 100 %) right in the menu bar
+- **Apple Silicon CPU temperature** (M1+) via `smctemp`, with one-click install
+- **Battery temperature** from built-in AppleSmartBattery telemetry
+- Transparent template icon that adapts to light/dark menu bars
+- **Configurable title**: toggle state, time, power, temps, icons, or °C/°F
+- **Menu stays open** while toggling, so you can tweak several settings at once
+- Labeled text mode (e.g. `ETA:15m | PWR:7.1W`) when you hide the emoji icons
+
+### Configurable display options
+
+Open the menu and flip any of these on/off:
+
+- **Charge State** — `CHG` / `BAT` / `AC` / `FULL`
+- **Remaining Time (ETA)** — time to full charge or drain
+- **Power Draw** — real system watts (from `PowerTelemetryData.SystemPowerIn`)
+- **Battery Temperature** — pack temperature in °C or °F
+- **CPU Temperature** — processor package temperature (see below)
+- **Per-Metric Icons** — use ⚡🔌🔋 glyphs instead of text labels
+- **Use Fahrenheit** — switch temperature unit globally
+
+---
+
+## CPU temperature (optional)
+
+Battery temperature works out of the box. CPU temperature needs an extra
+helper because macOS doesn't expose it through public APIs.
+
+1. Enable **🧠 CPU temperature** in the menu.
+2. If the helper isn't installed, an **⬇ Install CPU temperature tool** button
+   appears. Click it to install via Homebrew (Homebrew must already be
+   installed on your Mac).
+3. Or install manually:
+
+```bash
+# Apple Silicon + Intel (recommended)
 brew install narugit/tap/smctemp
 
-# Intel Macs only (return 0.0 on Apple Silicon):
+# Intel Macs only:
 brew install osx-cpu-temp
 brew install istats
 ```
 
-After installation, restart the widget and enable CPU temperature in the menu settings.
+After install, restart the widget and re-enable CPU temperature in the menu.
 
-If no working tool is installed, CPU temperature will display as `--` (disabled in UI).
-On Apple Silicon Macs (M1+), only `smctemp` reports real values — `osx-cpu-temp`
-and `istats` rely on Intel-era SMC keys.
+> On Apple Silicon only `smctemp` reports real values — `osx-cpu-temp` and
+> `istats` depend on Intel-era SMC keys.
 
-## Project visuals
+---
 
-- Brand hero 3:1 (PNG, 1920×640): [assets/branding/logo.png](assets/branding/logo.png)
-- Brand hero 3:1 (SVG source): [assets/branding/logo.svg](assets/branding/logo.svg)
-- **GitHub social preview 2:1 (PNG, 1280×640):** [assets/branding/logo-social.png](assets/branding/logo-social.png)
-- GitHub social preview 2:1 (SVG source): [assets/branding/logo-social.svg](assets/branding/logo-social.svg)
-- Brand mark (PNG, 640×640): [assets/branding/logo-mark.png](assets/branding/logo-mark.png)
-- Brand mark (SVG source): [assets/branding/logo-mark.svg](assets/branding/logo-mark.svg)
-- Menubar runtime icon: [assets/icons/menubar-template.png](assets/icons/menubar-template.png)
-- Additional icon pack: [assets/icons](assets/icons)
+## For developers
 
-To re-render the PNGs from SVG after editing (requires `brew install librsvg`):
-
-```bash
-rsvg-convert -w 1920 -h 640 assets/branding/logo.svg        -o assets/branding/logo.png
-rsvg-convert -w 1280 -h 640 assets/branding/logo-social.svg -o assets/branding/logo-social.png
-rsvg-convert -w 640  -h 640 assets/branding/logo-mark.svg   -o assets/branding/logo-mark.png
-```
-
-## Quick start
-
-### End users (no Python needed)
-
-Download the latest `.dmg` from the [Releases](../../releases) page, open it,
-and drag **MacBook Power.app** into the **Applications** folder. Launch it
-from Launchpad; a battery icon appears in the menu bar.
-
-Because the app is unsigned, the first launch requires a right-click → **Open**
-(or removing the quarantine attribute):
-
-```bash
-xattr -dr com.apple.quarantine "/Applications/MacBook Power.app"
-```
-
-### Developers (run from source)
+### Run from source
 
 ```bash
 ./.scripts/setup_project.sh
@@ -101,74 +130,73 @@ source .venv/bin/activate
 macbook-power-widget
 ```
 
-## Development commands
+### Useful commands
 
 ```bash
 source .venv/bin/activate
-python -m macbook_power.main --once
-pytest -q
-ruff check .
+python -m macbook_power.main --once   # one-shot readout
+pytest -q                              # tests
+ruff check .                           # lint
 ```
 
-## Build and distribute
+### Build the `.app` + `.dmg` locally
 
-Create a wheel and source distribution:
-
-```bash
-bash .scripts/build_dist.sh
-```
-
-Build a native macOS `.app` bundle and drag-to-install `.dmg` (requires the
-`mac` extras — `pip install -e ".[mac]"`):
+Install the macOS build extras and run:
 
 ```bash
+pip install -e ".[mac]"
 bash .scripts/build_app.sh
 ```
 
-All artifacts are written to `dist/`:
+Artifacts go into `dist/`:
 
-- `macbook_power-<version>.tar.gz` – source distribution
-- `macbook_power-<version>-py3-none-any.whl` – Python wheel
-- `MacBook Power.app` – native macOS app bundle (menubar-only, `LSUIElement`)
-- `MacBook-Power-<version>.dmg` – compressed, read-only drag-to-install image
+- `MacBook Power.app` — native menubar-only bundle (`LSUIElement`)
+- `MacBook-Power-<version>.dmg` — drag-to-install disk image
 
-## GitHub automation
+### Release automation
 
-CI workflow:
+Pushing to `main` triggers [.github/workflows/release.yml](.github/workflows/release.yml):
 
-- [.github/workflows/ci.yml](.github/workflows/ci.yml)
-- Runs tests and lint on push and pull requests
+- Auto-bumps the patch version (commit subject hints: `BREAKING CHANGE`/`[major]`,
+  `feat:`/`[minor]`, otherwise patch; use `[skip release]` to opt out)
+- Commits the bump back to `main` via the GitHub Contents API (auto-signed)
+- Builds the `.app` + `.dmg`
+- Creates a signed tag `vX.Y.Z` and a GitHub Release with the `.dmg` attached
 
-Release workflow:
+CI on push/PR: [.github/workflows/ci.yml](.github/workflows/ci.yml) — tests + lint.
 
-- [.github/workflows/release.yml](.github/workflows/release.yml)
-- Triggered when you push a tag matching v*
-- Builds Python distributions and publishes a GitHub Release with attached artifacts
+---
 
-Example release flow:
+## Project visuals
+
+- Brand hero 3:1: [assets/branding/logo.png](assets/branding/logo.png) · [SVG](assets/branding/logo.svg)
+- GitHub social preview 2:1: [assets/branding/logo-social.png](assets/branding/logo-social.png) · [SVG](assets/branding/logo-social.svg)
+- Brand mark 1:1: [assets/branding/logo-mark.png](assets/branding/logo-mark.png) · [SVG](assets/branding/logo-mark.svg)
+- Menubar runtime icon: [assets/icons/menubar-template.png](assets/icons/menubar-template.png)
+- Icon pack: [assets/icons](assets/icons)
+
+Re-render PNGs from SVG (needs `brew install librsvg`):
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+rsvg-convert -w 1920 -h 640 assets/branding/logo.svg        -o assets/branding/logo.png
+rsvg-convert -w 1280 -h 640 assets/branding/logo-social.svg -o assets/branding/logo-social.png
+rsvg-convert -w 640  -h 640 assets/branding/logo-mark.svg   -o assets/branding/logo-mark.png
 ```
 
-## Icon pipeline
-
-SVG files are kept for design and future tooling. PNG files are generated for runtime and packaging compatibility.
-
-Regenerate PNG assets:
+Regenerate runtime PNG icons:
 
 ```bash
 source .venv/bin/activate
 python .scripts/generate_icons.py
 ```
 
-## App Store direction
+---
 
-This repository is a strong prototype for telemetry logic, UX, and release mechanics.
+## Roadmap / App Store direction
 
-For Mac App Store distribution later, the practical path is:
+This repo is a strong prototype for telemetry, UX, and release mechanics.
+For eventual Mac App Store distribution the practical path is:
 
-1. Keep this repo as behavior reference and test bed.
-2. Build a native SwiftUI shell for notarization and App Store rules.
-3. Port matching battery logic and validate against this project outputs.
+1. Keep this repo as the behavior reference and test bed.
+2. Build a native SwiftUI shell for notarization + App Store rules.
+3. Port matching battery logic and validate against this project's outputs.

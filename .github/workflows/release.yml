@@ -236,3 +236,62 @@ jobs:
             dist/*.tar.gz
             dist/*.dmg
           generate_release_notes: true
+
+      - name: Update Homebrew tap
+        if: steps.bump.outputs.skip != 'true' && steps.tag_check.outputs.exists == 'false' && env.HOMEBREW_TAP_TOKEN != ''
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          VER="${VERSION#v}"
+          DMG="dist/MacBook-Power-${VER}.dmg"
+          if [[ ! -f "$DMG" ]]; then
+            echo "No DMG at $DMG — skipping tap update"
+            exit 0
+          fi
+          SHA=$(shasum -a 256 "$DMG" | awk '{print $1}')
+
+          TAP_DIR=$(mktemp -d)
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/Tweekazoid/homebrew-tap.git" "$TAP_DIR"
+
+          mkdir -p "$TAP_DIR/Casks"
+          CASK="$TAP_DIR/Casks/macbook-power.rb"
+          cat > "$CASK" <<EOF
+          cask "macbook-power" do
+            version "${VER}"
+            sha256 "${SHA}"
+
+            url "https://github.com/Tweekazoid/macbook_power/releases/download/v#{version}/MacBook-Power-#{version}.dmg"
+            name "MacBook Power"
+            desc "macOS menubar battery monitor with charge speed, ETA, power draw, and CPU/battery temps"
+            homepage "https://github.com/Tweekazoid/macbook_power"
+
+            livecheck do
+              url :url
+              strategy :github_latest
+            end
+
+            depends_on macos: ">= :monterey"
+
+            app "MacBook Power.app"
+
+            zap trash: [
+              "~/Library/Application Support/macbook-power",
+              "~/Library/LaunchAgents/com.github.tweekazoid.macbook-power.plist",
+              "~/Library/Preferences/com.tweekazoid.macbookpower.plist",
+            ]
+          end
+          EOF
+
+          cd "$TAP_DIR"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/macbook-power.rb
+          if git diff --cached --quiet; then
+            echo "Cask already up to date"
+          else
+            git commit -m "macbook-power ${VER}"
+            git push
+            echo "Published cask update for ${VER}"
+          fi

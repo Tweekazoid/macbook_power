@@ -11,3 +11,5 @@ dist/
 *.egg
 *.egg-info/
 build/
+
+guide.md
