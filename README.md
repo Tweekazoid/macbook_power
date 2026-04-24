@@ -61,9 +61,11 @@ and `istats` rely on Intel-era SMC keys.
 
 ## Project visuals
 
-- Brand hero (PNG, for GitHub social): [assets/branding/logo.png](assets/branding/logo.png)
-- Brand hero (SVG source): [assets/branding/logo.svg](assets/branding/logo.svg)
-- Brand mark (PNG): [assets/branding/logo-mark.png](assets/branding/logo-mark.png)
+- Brand hero 3:1 (PNG, 1920×640): [assets/branding/logo.png](assets/branding/logo.png)
+- Brand hero 3:1 (SVG source): [assets/branding/logo.svg](assets/branding/logo.svg)
+- **GitHub social preview 2:1 (PNG, 1280×640):** [assets/branding/logo-social.png](assets/branding/logo-social.png)
+- GitHub social preview 2:1 (SVG source): [assets/branding/logo-social.svg](assets/branding/logo-social.svg)
+- Brand mark (PNG, 640×640): [assets/branding/logo-mark.png](assets/branding/logo-mark.png)
 - Brand mark (SVG source): [assets/branding/logo-mark.svg](assets/branding/logo-mark.svg)
 - Menubar runtime icon: [assets/icons/menubar-template.png](assets/icons/menubar-template.png)
 - Additional icon pack: [assets/icons](assets/icons)
@@ -71,8 +73,9 @@ and `istats` rely on Intel-era SMC keys.
 To re-render the PNGs from SVG after editing (requires `brew install librsvg`):
 
 ```bash
-rsvg-convert -w 1920 -h 640 assets/branding/logo.svg -o assets/branding/logo.png
-rsvg-convert -w 640  -h 640 assets/branding/logo-mark.svg -o assets/branding/logo-mark.png
+rsvg-convert -w 1920 -h 640 assets/branding/logo.svg        -o assets/branding/logo.png
+rsvg-convert -w 1280 -h 640 assets/branding/logo-social.svg -o assets/branding/logo-social.png
+rsvg-convert -w 640  -h 640 assets/branding/logo-mark.svg   -o assets/branding/logo-mark.png
 ```
 
 ## Quick start

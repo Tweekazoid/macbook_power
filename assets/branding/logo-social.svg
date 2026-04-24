@@ -1,0 +1,82 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MacBook Power social preview">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1220"/>
+      <stop offset="100%" stop-color="#132A3D"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#34C759"/>
+      <stop offset="100%" stop-color="#30B0C7"/>
+    </linearGradient>
+    <linearGradient id="chipGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF7A59"/>
+      <stop offset="100%" stop-color="#FFC107"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1280" height="640" rx="48" fill="url(#bg)"/>
+
+  <!-- Battery + bolt mark (centered vertically, larger) -->
+  <g transform="translate(96,172)">
+    <rect x="0" y="0" width="280" height="212" rx="32" fill="#08101C" stroke="#E4EBF5" stroke-width="10"/>
+    <rect x="280" y="68" width="28" height="80" rx="10" fill="#E4EBF5"/>
+    <rect x="28" y="28" width="172" height="156" rx="16" fill="url(#accent)"/>
+    <path d="M178 -24L101 110H147L115 234L208 84H161L178 -24Z" fill="#FFC107" stroke="#FFE08A" stroke-width="4"/>
+
+    <!-- Small chip glyph, hinting at CPU telemetry -->
+    <g transform="translate(44,240)" opacity="0.95">
+      <rect x="0" y="0" width="60" height="60" rx="8" fill="url(#chipGlow)"/>
+      <rect x="11" y="11" width="38" height="38" rx="4" fill="#0B1220"/>
+      <rect x="-6" y="16" width="8" height="6" fill="#E4EBF5"/>
+      <rect x="-6" y="27" width="8" height="6" fill="#E4EBF5"/>
+      <rect x="-6" y="38" width="8" height="6" fill="#E4EBF5"/>
+      <rect x="58" y="16" width="8" height="6" fill="#E4EBF5"/>
+      <rect x="58" y="27" width="8" height="6" fill="#E4EBF5"/>
+      <rect x="58" y="38" width="8" height="6" fill="#E4EBF5"/>
+    </g>
+  </g>
+
+  <!-- Title block -->
+  <text x="448" y="232" fill="#F8FBFF" font-size="88" font-family="Avenir Next, SF Pro Display, Helvetica Neue, Arial" font-weight="700">
+    MacBook Power
+  </text>
+  <text x="448" y="290" fill="#B4C4D9" font-size="30" font-family="Avenir Next, SF Pro Text, Helvetica Neue, Arial" font-weight="500">
+    Menubar charge speed, ETA, power draw &amp; temperatures
+  </text>
+
+  <!-- Feature chips -->
+  <g font-family="Avenir Next, SF Pro Text, Helvetica Neue, Arial" font-weight="600" font-size="22">
+    <g transform="translate(448,328)">
+      <rect x="0" y="0" width="172" height="46" rx="23" fill="#11253A" stroke="#2C4E70"/>
+      <circle cx="24" cy="23" r="8" fill="#34C759"/>
+      <text x="42" y="30" fill="#DDE8F5">ETA 1h 42m</text>
+    </g>
+    <g transform="translate(632,328)">
+      <rect x="0" y="0" width="148" height="46" rx="23" fill="#11253A" stroke="#2C4E70"/>
+      <circle cx="24" cy="23" r="8" fill="#FFC107"/>
+      <text x="42" y="30" fill="#DDE8F5">27.4 W</text>
+    </g>
+    <g transform="translate(792,328)">
+      <rect x="0" y="0" width="176" height="46" rx="23" fill="#11253A" stroke="#2C4E70"/>
+      <circle cx="24" cy="23" r="8" fill="#FF7A59"/>
+      <text x="42" y="30" fill="#DDE8F5">CPU 42.3 °C</text>
+    </g>
+    <g transform="translate(980,328)">
+      <rect x="0" y="0" width="220" height="46" rx="23" fill="#11253A" stroke="#2C4E70"/>
+      <circle cx="24" cy="23" r="8" fill="#30B0C7"/>
+      <text x="42" y="30" fill="#DDE8F5">Apple Silicon ready</text>
+    </g>
+  </g>
+
+  <!-- Mock menubar sample -->
+  <g transform="translate(448,402)">
+    <rect x="0" y="0" width="752" height="64" rx="16" fill="#081523" stroke="#1E3550"/>
+    <text x="24" y="42" fill="#E4EBF5" font-family="Menlo, Monaco, Consolas, monospace" font-size="24">⚡ 84% CHG  ⏳ 1h 12m  🔌 27.4W  🧠 42°C</text>
+  </g>
+
+  <!-- Footer tagline -->
+  <text x="448" y="520" fill="#6F839C" font-size="20" font-family="Avenir Next, SF Pro Text, Helvetica Neue, Arial" font-weight="500">
+    open source · rumps · Python · Apple Silicon + Intel
+  </text>
+</svg>
