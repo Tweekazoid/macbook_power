@@ -1,4 +1,4 @@
 """MacBook power widget package."""
 
 __all__ = ["__version__"]
-__version__ = "0.1.1"
+__version__ = "0.2.0"
