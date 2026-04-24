@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 400" width="700" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f1115"/>
+      <stop offset="100%" stop-color="#1a1f2b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.6">
+      <stop offset="0%" stop-color="#f5c518" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#f5c518" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="700" height="400" fill="url(#bg)"/>
+
+  <!-- soft accent glows behind drop zones -->
+  <circle cx="180" cy="200" r="150" fill="url(#glow)"/>
+  <circle cx="520" cy="200" r="150" fill="url(#glow)"/>
+
+  <!-- arrow from app to Applications folder -->
+  <g stroke="#f5c518" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.55">
+    <path d="M 280 200 L 420 200"/>
+    <path d="M 405 188 L 420 200 L 405 212"/>
+  </g>
+
+  <!-- title -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif"
+     fill="#f5f7fa" text-anchor="middle">
+    <text x="350" y="52" font-size="22" font-weight="700" letter-spacing="0.5">MacBook Power</text>
+    <text x="350" y="78" font-size="13" font-weight="500" fill="#9aa4b2">Drag the app into Applications to install</text>
+  </g>
+
+  <!-- footer tagline -->
+  <text x="350" y="360" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+        font-size="11" fill="#6b7486" text-anchor="middle" letter-spacing="0.8">
+    BATTERY · POWER · ETA · TEMPERATURE
+  </text>
+</svg>

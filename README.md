@@ -80,6 +80,21 @@ rsvg-convert -w 640  -h 640 assets/branding/logo-mark.svg   -o assets/branding/l
 
 ## Quick start
 
+### End users (no Python needed)
+
+Download the latest `.dmg` from the [Releases](../../releases) page, open it,
+and drag **MacBook Power.app** into the **Applications** folder. Launch it
+from Launchpad; a battery icon appears in the menu bar.
+
+Because the app is unsigned, the first launch requires a right-click → **Open**
+(or removing the quarantine attribute):
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/MacBook Power.app"
+```
+
+### Developers (run from source)
+
 ```bash
 ./.scripts/setup_project.sh
 source .venv/bin/activate
@@ -97,13 +112,25 @@ ruff check .
 
 ## Build and distribute
 
-Create wheel and source distribution locally:
+Create a wheel and source distribution:
 
 ```bash
 bash .scripts/build_dist.sh
 ```
 
-Artifacts are written to dist.
+Build a native macOS `.app` bundle and drag-to-install `.dmg` (requires the
+`mac` extras — `pip install -e ".[mac]"`):
+
+```bash
+bash .scripts/build_app.sh
+```
+
+All artifacts are written to `dist/`:
+
+- `macbook_power-<version>.tar.gz` – source distribution
+- `macbook_power-<version>-py3-none-any.whl` – Python wheel
+- `MacBook Power.app` – native macOS app bundle (menubar-only, `LSUIElement`)
+- `MacBook-Power-<version>.dmg` – compressed, read-only drag-to-install image
 
 ## GitHub automation
 

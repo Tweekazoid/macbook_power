@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import threading
 from contextlib import suppress
 from dataclasses import asdict, dataclass
@@ -12,12 +13,26 @@ from pathlib import Path
 
 import rumps
 
+from macbook_power import __version__
 from macbook_power.battery import BatteryReadError, read_battery_sample
 from macbook_power.eta import ChargeEstimator, format_duration, format_speed
+from macbook_power.launch_at_login import (
+    disable_launch_at_login,
+    enable_launch_at_login,
+    is_launch_at_login_enabled,
+    is_launch_at_login_supported,
+)
 from macbook_power.temperatures import (
     CpuTemperatureReader,
     install_cpu_temp_tool,
     is_cpu_temp_tool_available,
+)
+from macbook_power.updater import (
+    UpdateCheckError,
+    download_dmg,
+    fetch_latest_release,
+    is_newer,
+    open_path,
 )
 
 
@@ -69,6 +84,12 @@ class MacBookPowerApp(rumps.App):
         )
         self._install_cpu_tool_item.set_callback(self._install_cpu_temperature_tool)
 
+        self._launch_at_login_item = rumps.MenuItem("🚀 Launch at Login")
+        self._launch_at_login_item.set_callback(self._toggle_launch_at_login)
+
+        self._check_updates_item = rumps.MenuItem("⬆ Check for Updates…")
+        self._check_updates_item.set_callback(self._check_for_updates_clicked)
+
         self._updated_item = rumps.MenuItem("Updated: --")
         self.menu = [
             self._status_item,
@@ -88,6 +109,9 @@ class MacBookPowerApp(rumps.App):
             self._opt_show_metric_icons,
             self._opt_use_fahrenheit,
             self._install_cpu_tool_item,
+            None,
+            self._launch_at_login_item,
+            self._check_updates_item,
             None,
             self._updated_item,
         ]
@@ -133,7 +157,41 @@ class MacBookPowerApp(rumps.App):
         """Start polling before entering app loop."""
         self._refresh(None)
         self._timer.start()
+        self._maybe_prompt_launch_at_login()
         self.run()
+
+    def _maybe_prompt_launch_at_login(self) -> None:
+        """On first run from an installed .app, ask whether to auto-start at login."""
+        if not is_launch_at_login_supported():
+            return
+        flag = _first_run_flag_path()
+        if flag.exists():
+            return
+        # Mark as asked even if they cancel — we only prompt once.
+        try:
+            flag.parent.mkdir(parents=True, exist_ok=True)
+            flag.write_text("asked", encoding="utf-8")
+        except OSError:
+            pass
+
+        if is_launch_at_login_enabled():
+            return
+
+        response = rumps.alert(
+            title="Start MacBook Power at login?",
+            message=(
+                "Launch MacBook Power automatically when you log in, so the widget "
+                "is always available in the menubar.\n\n"
+                "You can change this anytime from the menu."
+            ),
+            ok="Enable",
+            cancel="Not now",
+        )
+        if response == 1:
+            success, message = enable_launch_at_login()
+            if not success:
+                rumps.alert(title="Launch at Login", message=message)
+            self._update_install_button_visibility()
 
     def _refresh(self, _: object | None) -> None:
         try:
@@ -230,6 +288,13 @@ class MacBookPowerApp(rumps.App):
         _set_menu_item_hidden(self._cpu_temp_item, not tool_available)
         # Show install button only when tool is missing
         _set_menu_item_hidden(self._install_cpu_tool_item, tool_available)
+
+        # Sync Launch at Login state
+        if is_launch_at_login_supported():
+            _set_menu_item_hidden(self._launch_at_login_item, False)
+            self._launch_at_login_item.state = int(is_launch_at_login_enabled())
+        else:
+            _set_menu_item_hidden(self._launch_at_login_item, True)
 
     def _compose_title(
         self,
@@ -353,6 +418,94 @@ class MacBookPowerApp(rumps.App):
         thread = threading.Thread(target=_install, daemon=True)
         thread.start()
 
+    def _toggle_launch_at_login(self, sender: rumps.MenuItem) -> None:
+        if not is_launch_at_login_supported():
+            rumps.alert(
+                title="Launch at Login",
+                message=(
+                    "This feature only works when the app is installed to /Applications.\n\n"
+                    "Install the .dmg from the Releases page and run from there."
+                ),
+            )
+            self._reopen_menu()
+            return
+
+        if sender.state:
+            success, message = disable_launch_at_login()
+        else:
+            success, message = enable_launch_at_login()
+
+        if success:
+            sender.state = int(not sender.state)
+        else:
+            rumps.alert(title="Launch at Login", message=message)
+        self._reopen_menu()
+
+    def _check_for_updates_clicked(self, _: rumps.MenuItem) -> None:
+        self._check_updates_item.title = "⏳ Checking for updates…"
+
+        def _run():
+            try:
+                release = fetch_latest_release()
+            except UpdateCheckError as error:
+                self._check_updates_item.title = "⬆ Check for Updates…"
+                rumps.alert(title="Check for Updates", message=str(error))
+                return
+
+            self._check_updates_item.title = "⬆ Check for Updates…"
+
+            if not is_newer(release, __version__):
+                rumps.alert(
+                    title="You're up to date",
+                    message=(
+                        f"Current version {__version__} is the latest "
+                        f"(tested against {release.tag})."
+                    ),
+                )
+                return
+
+            changelog = release.body.strip()
+            if len(changelog) > 500:
+                changelog = changelog[:500] + "…"
+            body = (
+                f"A new version {release.tag} is available "
+                f"(you have {__version__}).\n\n"
+                f"{changelog}\n\n"
+                "Download the .dmg now?"
+            )
+            response = rumps.alert(
+                title=f"Update available: {release.name}",
+                message=body,
+                ok="Download",
+                cancel="Later",
+            )
+            if response != 1:
+                return
+
+            if not release.dmg_url:
+                subprocess.run(["open", release.html_url], check=False)
+                return
+
+            self._check_updates_item.title = "⬇ Downloading update…"
+            try:
+                dmg_path = download_dmg(release)
+            except UpdateCheckError as error:
+                self._check_updates_item.title = "⬆ Check for Updates…"
+                rumps.alert(title="Download failed", message=str(error))
+                return
+
+            self._check_updates_item.title = "⬆ Check for Updates…"
+            # Open the DMG in Finder so the user can drag into Applications
+            open_path(dmg_path)
+            rumps.notification(
+                title="Update downloaded",
+                subtitle=release.tag,
+                message="Drag MacBook Power into Applications to install.",
+            )
+
+        thread = threading.Thread(target=_run, daemon=True)
+        thread.start()
+
 
 def _set_menu_item_hidden(item: rumps.MenuItem, hidden: bool) -> None:
     """Toggle menu item visibility using the underlying NSMenuItem API."""
@@ -407,6 +560,12 @@ def _display_settings_path() -> Path:
     """Settings file location under user Library application support."""
     base = Path.home() / "Library" / "Application Support" / "macbook-power"
     return base / "display-settings.json"
+
+
+def _first_run_flag_path() -> Path:
+    """Marker file that records we've already asked about launch-at-login."""
+    base = Path.home() / "Library" / "Application Support" / "macbook-power"
+    return base / "launch-at-login-prompted"
 
 
 def _load_display_settings() -> DisplaySettings:

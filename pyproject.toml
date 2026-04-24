@@ -3,7 +3,7 @@ name = "macbook-power"
 version = "0.1.0"
 description = "macOS menubar widget that shows charging speed and time-to-full estimate"
 readme = "README.md"
-requires-python = ">=3.11, <3.14"
+requires-python = ">=3.9, <3.14"
 authors = [
     { name = "Michal Hons" }
 ]
@@ -15,6 +15,11 @@ dependencies = [
 dev = [
     "pytest>=8.2.0",
     "ruff>=0.6.0",
+]
+mac = [
+    "py2app>=0.28",
+    "dmgbuild>=1.6.1",
+    "tomli>=2.0.0; python_version < '3.11'",
 ]
 
 [project.scripts]
@@ -36,7 +41,7 @@ pythonpath = ["src"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

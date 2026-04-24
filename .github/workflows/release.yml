@@ -43,21 +43,60 @@ jobs:
           set -euo pipefail
           if git rev-parse -q --verify "refs/tags/${{ steps.version.outputs.version }}" >/dev/null; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Tag ${{ steps.version.outputs.version }} already exists \u2014 skipping release."
+            echo "Tag ${{ steps.version.outputs.version }} already exists — skipping release."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Resolve release name
+        id: relname
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          set -euo pipefail
+          VER="${{ steps.version.outputs.version }}"
+          HEADLINE=""
+          # 1) Prefer a headline from CHANGELOG.md line like: "## v0.1.1 — Apple Silicon CPU temps"
+          if [[ -f CHANGELOG.md ]]; then
+            HEADLINE=$(awk -v v="${VER}" '
+              $0 ~ "^##[[:space:]]+"v"([[:space:]]|$)" {
+                sub("^##[[:space:]]+"v"[[:space:]]*[—–-]*[[:space:]]*", "");
+                print; exit
+              }' CHANGELOG.md | tr -d '\r')
+          fi
+          # 2) Fallback to the latest commit subject on main
+          if [[ -z "${HEADLINE}" ]]; then
+            HEADLINE=$(git log -1 --pretty=%s)
+          fi
+          # 3) Sanitise
+          HEADLINE=$(echo "${HEADLINE}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+          # Build final name: "MacBook Power v0.1.1 — <headline>"
+          if [[ -n "${HEADLINE}" && "${HEADLINE}" != "${VER}" ]]; then
+            TITLE="MacBook Power ${VER} — ${HEADLINE}"
+          else
+            TITLE="MacBook Power ${VER}"
+          fi
+          echo "title=${TITLE}" >> "$GITHUB_OUTPUT"
+          echo "Release title: ${TITLE}"
+
       - name: Build distributions
         if: steps.tag_check.outputs.exists == 'false'
         run: bash .scripts/build_dist.sh
+
+      - name: Build macOS .app + .dmg
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          python -m pip install -e ".[mac]"
+          bash .scripts/build_app.sh
 
       - name: Upload dist artifacts
         if: steps.tag_check.outputs.exists == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: python-dist
-          path: dist/*
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/*.dmg
 
       - name: Create git tag
         if: steps.tag_check.outputs.exists == 'false' && !startsWith(github.ref, 'refs/tags/')
@@ -73,5 +112,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
-          files: dist/*
+          name: ${{ steps.relname.outputs.title }}
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/*.dmg
           generate_release_notes: true
