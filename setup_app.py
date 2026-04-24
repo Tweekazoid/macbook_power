@@ -32,13 +32,18 @@ VERSION = _PROJECT["version"]
 ICON_FILE = ROOT / "assets" / "branding" / "logo-mark.icns"
 ICONS_DIR = ROOT / "assets" / "icons"
 
-# Files/folders to ship inside the .app's Resources
+# Files/folders to ship inside the .app's Resources.
+# py2app requires /-separated paths relative to this setup file, never absolute.
 DATA_FILES = []
 if ICONS_DIR.exists():
     DATA_FILES.append(
         (
             "assets/icons",
-            [str(p) for p in ICONS_DIR.iterdir() if p.is_file()],
+            [
+                str(p.relative_to(ROOT)).replace("\\", "/")
+                for p in ICONS_DIR.iterdir()
+                if p.is_file()
+            ],
         )
     )
 
@@ -61,7 +66,9 @@ OPTIONS = {
     "packages": ["rumps", "macbook_power"],
     "includes": ["pkg_resources"],
     "excludes": ["tkinter", "pytest", "ruff"],
-    "iconfile": str(ICON_FILE) if ICON_FILE.exists() else None,
+    "iconfile": (
+        str(ICON_FILE.relative_to(ROOT)).replace("\\", "/") if ICON_FILE.exists() else None
+    ),
     # Use system Python frameworks when available to keep the bundle small.
     "semi_standalone": False,
     "site_packages": True,
