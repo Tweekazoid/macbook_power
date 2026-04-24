@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "setup-project",
+            "type": "shell",
+            "command": "${workspaceFolder}/.scripts/setup_project.sh",
+            "group": "build"
+        },
+        {
+            "label": "test",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python -m pytest -q",
+            "group": "test"
+        },
+        {
+            "label": "lint",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python -m ruff check ."
+        }
+    ]
+}

@@ -1,0 +1,76 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run MacBook Widget",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "windows": {
+                "python": "${workspaceFolder}/.venv/Scripts/python.exe"
+            },
+            "module": "macbook_power.main",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },
+        {
+            "name": "Run Once (CLI)",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "windows": {
+                "python": "${workspaceFolder}/.venv/Scripts/python.exe"
+            },
+            "module": "macbook_power.main",
+            "args": [
+                "--once"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },
+        {
+            "name": "Pytest",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "windows": {
+                "python": "${workspaceFolder}/.venv/Scripts/python.exe"
+            },
+            "module": "pytest",
+            "args": [
+                "-q"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Ruff Check",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "windows": {
+                "python": "${workspaceFolder}/.venv/Scripts/python.exe"
+            },
+            "module": "ruff",
+            "args": [
+                "check",
+                "."
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Run Project Setup",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "${workspaceFolder}/.scripts/setup_project.sh",
+            "windows": {
+                "runtimeExecutable": "${workspaceFolder}/.scripts/setup_project.bat"
+            },
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

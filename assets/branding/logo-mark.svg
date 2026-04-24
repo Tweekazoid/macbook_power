@@ -1,0 +1,18 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MacBook Power mark">
+  <defs>
+    <linearGradient id="markBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1220"/>
+      <stop offset="100%" stop-color="#132A3D"/>
+    </linearGradient>
+    <linearGradient id="markFill" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#34C759"/>
+      <stop offset="100%" stop-color="#30B0C7"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="48" fill="url(#markBg)"/>
+  <rect x="32" y="54" width="164" height="148" rx="26" fill="#08101C" stroke="#E4EBF5" stroke-width="8"/>
+  <rect x="196" y="102" width="20" height="52" rx="8" fill="#E4EBF5"/>
+  <rect x="52" y="74" width="100" height="108" rx="12" fill="url(#markFill)"/>
+  <path d="M141 20L88 118H118L97 222L163 102H133L141 20Z" fill="#FFC107" stroke="#FFE08A" stroke-width="4"/>
+</svg>

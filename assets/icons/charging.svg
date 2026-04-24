@@ -1,0 +1,5 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Charging icon">
+  <rect x="14" y="26" width="92" height="76" rx="12" fill="#0B111A" stroke="#D7DEE8" stroke-width="6"/>
+  <rect x="106" y="48" width="10" height="32" rx="4" fill="#D7DEE8"/>
+  <path d="M70 16L44 66H62L52 112L84 56H66L70 16Z" fill="#FFC107" stroke="#FFE08A" stroke-width="2"/>
+</svg>
