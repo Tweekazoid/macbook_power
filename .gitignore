@@ -13,3 +13,6 @@ dist/
 build/
 
 guide.md
+
+.eggs/
+!.eggs/**/README*
