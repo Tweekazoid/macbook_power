@@ -7,6 +7,10 @@ The release workflow automatically picks up the first line matching the
 current version (e.g. `## v0.1.1 — Headline goes here`) and uses the text
 after the dash as the GitHub release name.
 
+## v0.2.0 — feat(release): add Homebrew tap update step to release workflow
+
+- (auto-generated; edit CHANGELOG.md on main and push)
+
 ## v0.1.1 — Apple Silicon CPU temps, real system power draw, native .app
 
 - Add native macOS `.app` bundle and drag-to-install `.dmg` (via `py2app`)
