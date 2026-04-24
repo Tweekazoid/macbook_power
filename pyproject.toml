@@ -17,7 +17,7 @@ dev = [
     "ruff>=0.6.0",
 ]
 mac = [
-    "py2app>=0.28",
+    "py2app>=0.28,<0.28.10",  # 0.28.10 rejects install_requires auto-populated from pyproject.toml
     "dmgbuild>=1.6.1",
     "tomli>=2.0.0; python_version < '3.11'",
 ]

@@ -74,4 +74,7 @@ setup(
     data_files=DATA_FILES,
     options={"py2app": OPTIONS},
     setup_requires=["py2app"],
+    # py2app 0.28.10+ rejects install_requires. setuptools auto-derives it from
+    # pyproject.toml's [project].dependencies, so explicitly blank it here.
+    install_requires=[],
 )
