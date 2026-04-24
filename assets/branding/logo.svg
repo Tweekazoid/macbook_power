@@ -8,27 +8,71 @@
       <stop offset="0%" stop-color="#34C759"/>
       <stop offset="100%" stop-color="#30B0C7"/>
     </linearGradient>
+    <linearGradient id="chipGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF7A59"/>
+      <stop offset="100%" stop-color="#FFC107"/>
+    </linearGradient>
   </defs>
 
+  <!-- Canvas -->
   <rect x="0" y="0" width="960" height="320" rx="32" fill="url(#bg)"/>
 
-  <g transform="translate(72,66)">
+  <!-- Battery + bolt mark -->
+  <g transform="translate(72,58)">
     <rect x="0" y="0" width="198" height="150" rx="24" fill="#08101C" stroke="#E4EBF5" stroke-width="8"/>
     <rect x="198" y="46" width="20" height="58" rx="8" fill="#E4EBF5"/>
     <rect x="20" y="20" width="122" height="110" rx="12" fill="url(#accent)"/>
     <path d="M126 -18L71 79H104L81 166L147 59H114L126 -18Z" fill="#FFC107" stroke="#FFE08A" stroke-width="3"/>
+
+    <!-- Small chip glyph, hinting at CPU telemetry -->
+    <g transform="translate(30,172)" opacity="0.95">
+      <rect x="0" y="0" width="44" height="44" rx="6" fill="url(#chipGlow)"/>
+      <rect x="8" y="8" width="28" height="28" rx="3" fill="#0B1220"/>
+      <rect x="-4" y="12" width="6" height="4" fill="#E4EBF5"/>
+      <rect x="-4" y="20" width="6" height="4" fill="#E4EBF5"/>
+      <rect x="-4" y="28" width="6" height="4" fill="#E4EBF5"/>
+      <rect x="42" y="12" width="6" height="4" fill="#E4EBF5"/>
+      <rect x="42" y="20" width="6" height="4" fill="#E4EBF5"/>
+      <rect x="42" y="28" width="6" height="4" fill="#E4EBF5"/>
+    </g>
   </g>
 
-  <text x="322" y="132" fill="#F8FBFF" font-size="56" font-family="Avenir Next, SF Pro Display, Helvetica Neue, Arial" font-weight="700">
+  <!-- Title block -->
+  <text x="322" y="118" fill="#F8FBFF" font-size="56" font-family="Avenir Next, SF Pro Display, Helvetica Neue, Arial" font-weight="700">
     MacBook Power
   </text>
-  <text x="322" y="183" fill="#B4C4D9" font-size="26" font-family="Avenir Next, SF Pro Text, Helvetica Neue, Arial" font-weight="500">
-    Menubar charge speed and ETA monitor for macOS
+  <text x="322" y="158" fill="#B4C4D9" font-size="22" font-family="Avenir Next, SF Pro Text, Helvetica Neue, Arial" font-weight="500">
+    Menubar charge speed, ETA, power draw &amp; temperatures
   </text>
 
-  <rect x="322" y="214" width="214" height="44" rx="22" fill="#11253A" stroke="#2C4E70"/>
-  <circle cx="348" cy="236" r="9" fill="#34C759"/>
-  <text x="367" y="243" fill="#DDE8F5" font-size="22" font-family="Avenir Next, SF Pro Text, Helvetica Neue, Arial" font-weight="600">
-    Live charging data
-  </text>
+  <!-- Feature chips -->
+  <g font-family="Avenir Next, SF Pro Text, Helvetica Neue, Arial" font-weight="600" font-size="16">
+    <g transform="translate(322,184)">
+      <rect x="0" y="0" width="128" height="34" rx="17" fill="#11253A" stroke="#2C4E70"/>
+      <circle cx="18" cy="17" r="6" fill="#34C759"/>
+      <text x="32" y="22" fill="#DDE8F5">ETA 1h 42m</text>
+    </g>
+    <g transform="translate(460,184)">
+      <rect x="0" y="0" width="112" height="34" rx="17" fill="#11253A" stroke="#2C4E70"/>
+      <circle cx="18" cy="17" r="6" fill="#FFC107"/>
+      <text x="32" y="22" fill="#DDE8F5">27.4 W</text>
+    </g>
+    <g transform="translate(582,184)">
+      <rect x="0" y="0" width="132" height="34" rx="17" fill="#11253A" stroke="#2C4E70"/>
+      <circle cx="18" cy="17" r="6" fill="#FF7A59"/>
+      <text x="32" y="22" fill="#DDE8F5">CPU 42.3 °C</text>
+    </g>
+    <g transform="translate(724,184)">
+      <rect x="0" y="0" width="164" height="34" rx="17" fill="#11253A" stroke="#2C4E70"/>
+      <circle cx="18" cy="17" r="6" fill="#30B0C7"/>
+      <text x="32" y="22" fill="#DDE8F5">Apple Silicon ready</text>
+    </g>
+  </g>
+
+  <!-- Mock menubar sample -->
+  <g transform="translate(322,236)">
+    <rect x="0" y="0" width="566" height="48" rx="12" fill="#081523" stroke="#1E3550"/>
+    <text x="18" y="31" fill="#E4EBF5" font-family="Menlo, Monaco, Consolas, monospace" font-size="18">⚡ 84% CHG  ⏳ 1h 12m  🔌 27.4W  🧠 42°C</text>
+  </g>
 </svg>
+

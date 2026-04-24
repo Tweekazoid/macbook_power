@@ -1,32 +1,37 @@
 <p align="center">
-	<img src="assets/branding/logo.svg" alt="MacBook Power logo" width="860" />
+	<img src="assets/branding/logo.png" alt="MacBook Power logo" width="860" />
 </p>
 
 <p align="center">
-	macOS menubar battery monitor with live charge speed and ETA to full.
+	macOS menubar battery monitor with live charge speed, ETA, real system power draw, and CPU/battery temperatures.
 </p>
 
 ## Highlights
 
-- Live percentage, speed, power draw, and ETA in the menu bar
-- Uses real AppleSmartBattery telemetry from ioreg
-- Transparent template icon support for modern macOS menu bar behavior
-- Checkbox-configurable title modules (state, time, power, temps, icons)
+- Live percentage, charge speed, ETA, and **real system power draw** (from `PowerTelemetryData`) in the menu bar
+- **Apple Silicon CPU temperature** via `smctemp` (M1+), with auto-install button
+- Battery temperature from built-in AppleSmartBattery telemetry
+- Transparent template icon that matches light/dark menu bars
+- Checkbox-configurable title modules (state, time, power, temps, icons, °C/°F)
 - No-icon mode uses labeled tokens for readability (for example `ETA:15m | PWR:7.1W`)
-- Temperature units toggle between Celsius and Fahrenheit in menu settings
+- **Menu stays open** when toggling options — tweak several settings without reopening
 - Python package setup with tests, linting, and VS Code debug tasks
 - GitHub Actions CI and automatic release workflow
 
 ## Configurable display options
 
-All title components can be toggled on/off via menu checkboxes:
+All title components can be toggled on/off via menu checkboxes. The menu
+re-opens automatically after each toggle so you can tweak several settings in
+a single session.
 
 - **Charge State** (CHG / BAT / AC / FULL) – charging status and external power indicator
 - **Remaining Time** (ETA) – time to full charge or battery drain
-- **Power Draw** (watts) – current charging/discharging rate
+- **Power Draw** (watts) – real system power from `PowerTelemetryData.SystemPowerIn`
+  (non-zero even at 100 %), with fallback to battery flow
 - **Battery Temperature** – battery pack temperature in °C/°F (always available)
 - **CPU Temperature** – processor package temperature (optional, see below)
 - **Per-Metric Icons** – use symbols (⚡🔌🔋) instead of text labels
+- **Use Fahrenheit** – switch temperature unit globally
 
 ## CPU Temperature (optional)
 
@@ -56,10 +61,19 @@ and `istats` rely on Intel-era SMC keys.
 
 ## Project visuals
 
-- Brand hero: [assets/branding/logo.svg](assets/branding/logo.svg)
-- Brand mark: [assets/branding/logo-mark.svg](assets/branding/logo-mark.svg)
+- Brand hero (PNG, for GitHub social): [assets/branding/logo.png](assets/branding/logo.png)
+- Brand hero (SVG source): [assets/branding/logo.svg](assets/branding/logo.svg)
+- Brand mark (PNG): [assets/branding/logo-mark.png](assets/branding/logo-mark.png)
+- Brand mark (SVG source): [assets/branding/logo-mark.svg](assets/branding/logo-mark.svg)
 - Menubar runtime icon: [assets/icons/menubar-template.png](assets/icons/menubar-template.png)
 - Additional icon pack: [assets/icons](assets/icons)
+
+To re-render the PNGs from SVG after editing (requires `brew install librsvg`):
+
+```bash
+rsvg-convert -w 1920 -h 640 assets/branding/logo.svg -o assets/branding/logo.png
+rsvg-convert -w 640  -h 640 assets/branding/logo-mark.svg -o assets/branding/logo-mark.png
+```
 
 ## Quick start
 
