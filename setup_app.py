@@ -67,6 +67,20 @@ OPTIONS = {
     "site_packages": True,
 }
 
+
+# py2app rejects any truthy `install_requires` on the Distribution. Setuptools
+# auto-populates it from pyproject.toml's `[project].dependencies` during
+# `finalize_options`, overriding any kwarg we pass to `setup()`. Subclass the
+# py2app command so it wipes the field just before it runs.
+from py2app.build_app import py2app as _py2app_cmd  # noqa: E402
+
+
+class py2app(_py2app_cmd):
+    def finalize_options(self):  # type: ignore[override]
+        self.distribution.install_requires = []
+        super().finalize_options()
+
+
 setup(
     name=APP_NAME,
     app=[APP_ENTRY],
@@ -74,7 +88,6 @@ setup(
     data_files=DATA_FILES,
     options={"py2app": OPTIONS},
     setup_requires=["py2app"],
-    # py2app 0.28.10+ rejects install_requires. setuptools auto-derives it from
-    # pyproject.toml's [project].dependencies, so explicitly blank it here.
     install_requires=[],
+    cmdclass={"py2app": py2app},
 )
