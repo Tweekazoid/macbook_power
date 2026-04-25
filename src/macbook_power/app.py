@@ -24,6 +24,7 @@ from macbook_power.launch_at_login import (
 )
 from macbook_power.temperatures import (
     CpuTemperatureReader,
+    get_install_log_path,
     install_cpu_temp_tool,
     is_cpu_temp_tool_available,
 )
@@ -407,16 +408,51 @@ class MacBookPowerApp(rumps.App):
 
         def _install():
             self._install_cpu_tool_item.title = "⏳ Installing..."
-            success, message = install_cpu_temp_tool(timeout_seconds=120.0)
+            success, message = install_cpu_temp_tool(timeout_seconds=300.0)
             if success:
                 self._install_cpu_tool_item.title = "✅ Installed!"
                 # Refresh UI: toggle appears, install button hides
                 self._update_install_button_visibility()
+                rumps.notification(
+                    title="CPU temperature",
+                    subtitle="Installed successfully",
+                    message=message,
+                )
             else:
-                self._install_cpu_tool_item.title = f"❌ Failed: {message}"
+                self._install_cpu_tool_item.title = "❌ Install failed (click for details)"
+                self._show_install_failure_alert(message)
 
         thread = threading.Thread(target=_install, daemon=True)
         thread.start()
+
+    def _show_install_failure_alert(self, message: str) -> None:
+        """Show a modal alert describing why the install failed."""
+        log_path = get_install_log_path()
+        log_hint = (
+            f"\n\nDetailed log:\n{log_path}"
+            if log_path.exists()
+            else "\n\n(No log file was written.)"
+        )
+        body = (
+            f"{message}\n\n"
+            "Common causes:\n"
+            "  \u2022 Homebrew not installed or not on PATH\n"
+            "  \u2022 No network connection\n"
+            "  \u2022 brew tap requires Xcode CLT (run: xcode-select --install)\n\n"
+            "You can also install manually in Terminal:\n"
+            "  brew install narugit/tap/smctemp"
+            f"{log_hint}"
+        )
+        response = rumps.alert(
+            title="CPU temperature install failed",
+            message=body,
+            ok="OK",
+            cancel="Open log" if log_path.exists() else None,
+        )
+        # rumps.alert returns 1 for OK, 0 for cancel button.
+        if response == 0 and log_path.exists():
+            with suppress(Exception):
+                subprocess.Popen(["open", str(log_path)])
 
     def _toggle_launch_at_login(self, sender: rumps.MenuItem) -> None:
         if not is_launch_at_login_supported():

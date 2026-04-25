@@ -18,11 +18,13 @@ If no working tool is installed, CPU temperature will be unavailable
 from __future__ import annotations
 
 import contextlib
+import os
 import platform
 import re
 import shutil
 import subprocess
 import time
+from pathlib import Path
 
 _CPU_TEMP_RE = re.compile(r"(-?\d+(?:\.\d+)?)\s*°?\s*([CF])?", re.IGNORECASE)
 
@@ -31,6 +33,50 @@ _IS_APPLE_SILICON = platform.machine() == "arm64"
 # Preferred install target. smctemp works on both Apple Silicon and Intel.
 _DEFAULT_INSTALL_TOOL = "smctemp"
 _DEFAULT_INSTALL_FORMULA = "narugit/tap/smctemp"
+
+# Common Homebrew install locations. When the app is launched from
+# ``/Applications`` via LaunchServices the PATH only contains ``/usr/bin``
+# etc., so ``shutil.which('brew')`` returns None even though brew is
+# installed. Probe these locations explicitly.
+_BREW_PATHS = (
+    "/opt/homebrew/bin/brew",  # Apple Silicon
+    "/usr/local/bin/brew",  # Intel
+    "/home/linuxbrew/.linuxbrew/bin/brew",
+)
+
+_INSTALL_LOG_PATH = Path.home() / "Library" / "Logs" / "macbook_power" / "install.log"
+
+
+def _find_brew() -> str | None:
+    """Locate the ``brew`` executable, including outside the app PATH."""
+    found = shutil.which("brew")
+    if found:
+        return found
+    for candidate in _BREW_PATHS:
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
+def _brew_env() -> dict[str, str]:
+    """Build an env dict that exposes Homebrew bin dirs on PATH."""
+    env = os.environ.copy()
+    extra = ["/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin"]
+    current = env.get("PATH", "")
+    parts = [p for p in extra if p not in current.split(os.pathsep)]
+    if parts:
+        env["PATH"] = os.pathsep.join([*parts, current]) if current else os.pathsep.join(parts)
+    # ``HOME`` is required by brew when launched from a sandboxed context.
+    env.setdefault("HOME", str(Path.home()))
+    return env
+
+
+def _log_install(message: str) -> None:
+    """Append a line to the install log; never raises."""
+    with contextlib.suppress(OSError):
+        _INSTALL_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _INSTALL_LOG_PATH.open("a", encoding="utf-8") as fp:
+            fp.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {message}\n")
 
 # Help text shown when CPU temp is unavailable
 _INSTALL_HELP = (
@@ -57,9 +103,14 @@ def get_install_instructions() -> str:
     return _INSTALL_HELP
 
 
+def get_install_log_path() -> Path:
+    """Return path of the install log file (may not exist yet)."""
+    return _INSTALL_LOG_PATH
+
+
 def is_brew_available() -> bool:
     """Check if Homebrew is installed."""
-    return shutil.which("brew") is not None
+    return _find_brew() is not None
 
 
 def is_cpu_temp_tool_available() -> bool:
@@ -82,41 +133,72 @@ def install_cpu_temp_tool(
         (success, message) tuple. ``success`` is True only if the tool is
         installed AND produces a valid reading afterwards.
     """
-    if not is_brew_available():
-        return False, "Homebrew not found. Install from https://brew.sh"
+    brew = _find_brew()
+    if brew is None:
+        msg = (
+            "Homebrew not found. Install from https://brew.sh, then "
+            "restart the app."
+        )
+        _log_install(f"FAIL: {msg}")
+        return False, msg
 
     formula = (
         _DEFAULT_INSTALL_FORMULA if tool_name == _DEFAULT_INSTALL_TOOL else tool_name
     )
+    env = _brew_env()
+    _log_install(f"START: brew={brew} formula={formula}")
 
     # smctemp lives in a custom tap; make sure it's added first.
     if tool_name == _DEFAULT_INSTALL_TOOL:
         with contextlib.suppress(OSError, subprocess.TimeoutExpired):
-            subprocess.run(
-                ["brew", "tap", "narugit/tap"],
+            tap_result = subprocess.run(
+                [brew, "tap", "narugit/tap"],
                 check=False,
                 capture_output=True,
                 text=True,
-                timeout=30.0,
+                timeout=60.0,
+                env=env,
+            )
+            _log_install(
+                f"tap rc={tap_result.returncode} "
+                f"stdout={tap_result.stdout.strip()[:300]} "
+                f"stderr={tap_result.stderr.strip()[:300]}"
             )
 
     try:
         result = subprocess.run(
-            ["brew", "install", formula],
+            [brew, "install", formula],
             check=False,
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
+            env=env,
+        )
+        _log_install(
+            f"install rc={result.returncode} "
+            f"stdout={result.stdout.strip()[-500:]} "
+            f"stderr={result.stderr.strip()[-500:]}"
         )
         if result.returncode != 0:
-            return False, f"Installation failed: {result.stderr.strip()[:200]}"
+            details = (result.stderr.strip() or result.stdout.strip())
+            return False, f"brew install failed (exit {result.returncode}):\n{details}"
     except subprocess.TimeoutExpired:
-        return False, f"Installation timed out after {timeout_seconds}s"
+        msg = f"Installation timed out after {timeout_seconds:.0f}s"
+        _log_install(f"FAIL: {msg}")
+        return False, msg
     except Exception as e:  # noqa: BLE001
-        return False, f"Installation error: {e}"
+        msg = f"Installation error: {e}"
+        _log_install(f"FAIL: {msg}")
+        return False, msg
 
     if read_cpu_temperature_c() is None:
-        return False, f"Installed {tool_name} but no valid reading yet"
+        msg = (
+            f"Installed {tool_name} but it returned no valid reading. "
+            f"Try restarting the app."
+        )
+        _log_install(f"FAIL: {msg}")
+        return False, msg
+    _log_install(f"OK: {tool_name} installed and reading temperature")
     return True, f"Successfully installed {tool_name}"
 
 
