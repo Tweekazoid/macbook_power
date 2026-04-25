@@ -12,6 +12,8 @@ from datetime import datetime
 from pathlib import Path
 
 import rumps
+from AppKit import NSThread
+from PyObjCTools import AppHelper
 
 from macbook_power import __version__
 from macbook_power.battery import BatteryReadError, read_battery_sample
@@ -413,7 +415,7 @@ class MacBookPowerApp(rumps.App):
                 self._install_cpu_tool_item.title = "✅ Installed!"
                 # Refresh UI: toggle appears, install button hides
                 self._update_install_button_visibility()
-                rumps.notification(
+                _notify(
                     title="CPU temperature",
                     subtitle="Installed successfully",
                     message=message,
@@ -443,7 +445,7 @@ class MacBookPowerApp(rumps.App):
             "  brew install narugit/tap/smctemp"
             f"{log_hint}"
         )
-        response = rumps.alert(
+        response = _alert(
             title="CPU temperature install failed",
             message=body,
             ok="OK",
@@ -485,13 +487,13 @@ class MacBookPowerApp(rumps.App):
                 release = fetch_latest_release()
             except UpdateCheckError as error:
                 self._check_updates_item.title = "⬆ Check for Updates…"
-                rumps.alert(title="Check for Updates", message=str(error))
+                _alert(title="Check for Updates", message=str(error))
                 return
 
             self._check_updates_item.title = "⬆ Check for Updates…"
 
             if not is_newer(release, __version__):
-                rumps.alert(
+                _alert(
                     title="You're up to date",
                     message=(
                         f"Current version {__version__} is the latest "
@@ -509,7 +511,7 @@ class MacBookPowerApp(rumps.App):
                 f"{changelog}\n\n"
                 "Download the .dmg now?"
             )
-            response = rumps.alert(
+            response = _alert(
                 title=f"Update available: {release.name}",
                 message=body,
                 ok="Download",
@@ -527,13 +529,13 @@ class MacBookPowerApp(rumps.App):
                 dmg_path = download_dmg(release)
             except UpdateCheckError as error:
                 self._check_updates_item.title = "⬆ Check for Updates…"
-                rumps.alert(title="Download failed", message=str(error))
+                _alert(title="Download failed", message=str(error))
                 return
 
             self._check_updates_item.title = "⬆ Check for Updates…"
             # Open the DMG in Finder so the user can drag into Applications
             open_path(dmg_path)
-            rumps.notification(
+            _notify(
                 title="Update downloaded",
                 subtitle=release.tag,
                 message="Drag MacBook Power into Applications to install.",
@@ -547,6 +549,45 @@ def _set_menu_item_hidden(item: rumps.MenuItem, hidden: bool) -> None:
     """Toggle menu item visibility using the underlying NSMenuItem API."""
     with suppress(AttributeError):
         item._menuitem.setHidden_(bool(hidden))
+
+
+def _alert(**kwargs) -> int:
+    """Thread-safe ``rumps.alert``.
+
+    NSAlert/NSWindow must be created on the main thread or AppKit raises
+    ``NSInternalInconsistencyException``. When called from a worker thread,
+    schedule the alert on the main runloop and block until the user dismisses
+    it so we can return the response code.
+    """
+    if NSThread.isMainThread():
+        return rumps.alert(**kwargs)
+
+    result: dict[str, int] = {}
+    done = threading.Event()
+
+    def _show() -> None:
+        try:
+            result["value"] = rumps.alert(**kwargs)
+        finally:
+            done.set()
+
+    AppHelper.callAfter(_show)
+    done.wait()
+    return result.get("value", 0)
+
+
+def _notify(**kwargs) -> None:
+    """Thread-safe ``rumps.notification`` (fire and forget)."""
+    if NSThread.isMainThread():
+        with suppress(Exception):
+            rumps.notification(**kwargs)
+        return
+
+    def _show() -> None:
+        with suppress(Exception):
+            rumps.notification(**kwargs)
+
+    AppHelper.callAfter(_show)
 
 
 def _battery_bar(percent: float, slots: int = 10) -> str:
