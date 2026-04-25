@@ -1,6 +1,6 @@
 [project]
 name = "macbook-power"
-version = "0.3.0"
+version = "0.4.0"
 description = "macOS menubar widget that shows charging speed and time-to-full estimate"
 readme = "README.md"
 requires-python = ">=3.9, <3.14"
