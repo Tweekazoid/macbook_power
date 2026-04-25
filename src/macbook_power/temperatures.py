@@ -44,6 +44,28 @@ _BREW_PATHS = (
     "/home/linuxbrew/.linuxbrew/bin/brew",
 )
 
+# Same problem applies to the temperature tools themselves. When PyInstaller-
+# packaged apps run from /Applications, ``shutil.which`` only sees the
+# sandboxed PATH. Search these dirs as a fallback.
+_TOOL_SEARCH_DIRS = (
+    "/opt/homebrew/bin",
+    "/opt/homebrew/sbin",
+    "/usr/local/bin",
+    "/usr/local/sbin",
+)
+
+
+def _which(executable: str) -> str | None:
+    """Locate ``executable``, falling back to common Homebrew dirs."""
+    found = shutil.which(executable)
+    if found:
+        return found
+    for directory in _TOOL_SEARCH_DIRS:
+        candidate = os.path.join(directory, executable)
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
 _INSTALL_LOG_PATH = Path.home() / "Library" / "Logs" / "macbook_power" / "install.log"
 
 
@@ -232,11 +254,12 @@ def read_cpu_temperature_c(timeout_seconds: float = 0.8) -> float | None:
         )
 
     for command in commands:
-        if shutil.which(command[0]) is None:
+        executable = _which(command[0])
+        if executable is None:
             continue
         try:
             result = subprocess.run(
-                command,
+                [executable, *command[1:]],
                 check=False,
                 capture_output=True,
                 text=True,
