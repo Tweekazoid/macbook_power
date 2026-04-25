@@ -7,6 +7,10 @@ The release workflow automatically picks up the first line matching the
 current version (e.g. `## v0.1.1 — Headline goes here`) and uses the text
 after the dash as the GitHub release name.
 
+## v0.5.0 — feat(temperatures): enhance executable search with fallback for Homebrew directories
+
+- (auto-generated; edit CHANGELOG.md on main and push)
+
 ## v0.4.0 — feat(alerts): implement thread-safe alert and notification functions
 
 - (auto-generated; edit CHANGELOG.md on main and push)
