@@ -7,6 +7,10 @@ The release workflow automatically picks up the first line matching the
 current version (e.g. `## v0.1.1 — Headline goes here`) and uses the text
 after the dash as the GitHub release name.
 
+## v0.7.0 — feat(readme): update features section with new metrics rotation and sleep-aware functionality
+
+- (auto-generated; edit CHANGELOG.md on main and push)
+
 ## v0.6.0 — feat(metrics): add metric rotation feature and sleep/wake handling
 
 - (auto-generated; edit CHANGELOG.md on main and push)
