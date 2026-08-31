@@ -74,8 +74,12 @@ first time.
   (non-zero even at 100 %) right in the menu bar
 - **Apple Silicon CPU temperature** (M1+) via `smctemp`, with one-click install
 - **Battery temperature** from built-in AppleSmartBattery telemetry
-- Transparent template icon that adapts to light/dark menu bars
+- Transparent template icon that adapts to light/dark menu bars, with a subtle
+  **rounded border** framing the widget
 - **Configurable title**: toggle state, time, power, temps, icons, or °C/°F
+- **Rotate metrics** mode: cycle enabled stats one at a time on a timer to keep
+  the menu bar compact and leave room for other apps
+- **Sleep-aware**: polling pauses while your Mac sleeps and resumes on wake
 - **Menu stays open** while toggling, so you can tweak several settings at once
 - Labeled text mode (e.g. `ETA:15m | PWR:7.1W`) when you hide the emoji icons
 
@@ -90,6 +94,9 @@ Open the menu and flip any of these on/off:
 - **CPU Temperature** — processor package temperature (see below)
 - **Per-Metric Icons** — use ⚡🔌🔋 glyphs instead of text labels
 - **Use Fahrenheit** — switch temperature unit globally
+- **Rotate metrics in title** — show one stat at a time, cycling on a timer
+  (fixed-width, monospaced so the layout doesn't jump). Override the interval
+  with `MACBOOK_POWER_ROTATE_SECONDS` (default `4`).
 
 ---
 
