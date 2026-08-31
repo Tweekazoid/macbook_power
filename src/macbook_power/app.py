@@ -6,13 +6,24 @@ import json
 import os
 import subprocess
 import threading
+import warnings
 from contextlib import suppress
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
 import rumps
-from AppKit import NSThread
+from AppKit import (
+    NSAttributedString,
+    NSColor,
+    NSFont,
+    NSFontAttributeName,
+    NSThread,
+    NSWorkspace,
+    NSWorkspaceDidWakeNotification,
+    NSWorkspaceWillSleepNotification,
+)
+from Foundation import NSObject
 from PyObjCTools import AppHelper
 
 from macbook_power import __version__
@@ -50,6 +61,21 @@ class DisplaySettings:
     show_cpu_temperature: bool = False
     show_metric_icons: bool = True
     use_fahrenheit: bool = False
+    rotate_metrics: bool = False
+
+
+class _SleepWakeObserver(NSObject):
+    """Bridges macOS sleep/wake notifications to Python callbacks."""
+
+    def onSleep_(self, _notification) -> None:  # noqa: N802 (ObjC selector)
+        callback = getattr(self, "_on_sleep", None)
+        if callback is not None:
+            callback()
+
+    def onWake_(self, _notification) -> None:  # noqa: N802 (ObjC selector)
+        callback = getattr(self, "_on_wake", None)
+        if callback is not None:
+            callback()
 
 
 class MacBookPowerApp(rumps.App):
@@ -63,6 +89,16 @@ class MacBookPowerApp(rumps.App):
         self._cpu_temperature_reader = CpuTemperatureReader(cache_seconds=15.0)
         self._display_settings = _load_display_settings()
         refresh_seconds = _refresh_interval_seconds()
+        rotate_seconds = _rotate_interval_seconds()
+
+        # Rotating-title state: prefix (always shown) + rotatable metric tokens.
+        self._title_prefix = f"{0:3.0f}%"
+        self._title_metric_parts: list[str] = []
+        self._title_separator = " "
+        self._rotate_index = 0
+        self._paused = False
+        self._icon_sized = False
+        self._border_styled = False
 
         self._status_item = rumps.MenuItem("Status: loading...")
         self._speed_item = rumps.MenuItem("Speed: --")
@@ -81,6 +117,7 @@ class MacBookPowerApp(rumps.App):
         self._opt_show_cpu_temperature = rumps.MenuItem("🧠 CPU temperature")
         self._opt_show_metric_icons = rumps.MenuItem("✨ Per-metric icons")
         self._opt_use_fahrenheit = rumps.MenuItem("🌡 Use Fahrenheit (F)")
+        self._opt_rotate_metrics = rumps.MenuItem("🔁 Rotate metrics in title")
 
         self._install_cpu_tool_item = rumps.MenuItem(
             "⬇ Install CPU temperature tool"
@@ -111,6 +148,7 @@ class MacBookPowerApp(rumps.App):
             self._opt_show_cpu_temperature,
             self._opt_show_metric_icons,
             self._opt_use_fahrenheit,
+            self._opt_rotate_metrics,
             self._install_cpu_tool_item,
             None,
             self._launch_at_login_item,
@@ -153,15 +191,51 @@ class MacBookPowerApp(rumps.App):
             key="use_fahrenheit",
             callback=self._toggle_use_fahrenheit,
         )
+        self._bind_display_toggle(
+            item=self._opt_rotate_metrics,
+            key="rotate_metrics",
+            callback=self._toggle_rotate_metrics,
+        )
 
         self._timer = rumps.Timer(self._refresh, refresh_seconds)
+        self._rotate_timer = rumps.Timer(self._advance_rotation, rotate_seconds)
+        self._sleep_observer = _SleepWakeObserver.alloc().init()
+        self._sleep_observer._on_sleep = self._handle_sleep
+        self._sleep_observer._on_wake = self._handle_wake
 
     def run_with_timer(self) -> None:
         """Start polling before entering app loop."""
         self._refresh(None)
         self._timer.start()
+        self._rotate_timer.start()
+        self._register_sleep_wake_observers()
         self._maybe_prompt_launch_at_login()
         self.run()
+
+    def _register_sleep_wake_observers(self) -> None:
+        """Pause work while the Mac sleeps; resume on wake."""
+        center = NSWorkspace.sharedWorkspace().notificationCenter()
+        center.addObserver_selector_name_object_(
+            self._sleep_observer, "onSleep:", NSWorkspaceWillSleepNotification, None
+        )
+        center.addObserver_selector_name_object_(
+            self._sleep_observer, "onWake:", NSWorkspaceDidWakeNotification, None
+        )
+
+    def _handle_sleep(self) -> None:
+        if self._paused:
+            return
+        self._paused = True
+        self._timer.stop()
+        self._rotate_timer.stop()
+
+    def _handle_wake(self) -> None:
+        if not self._paused:
+            return
+        self._paused = False
+        self._refresh(None)
+        self._timer.start()
+        self._rotate_timer.start()
 
     def _maybe_prompt_launch_at_login(self) -> None:
         """On first run from an installed .app, ask whether to auto-start at login."""
@@ -200,6 +274,8 @@ class MacBookPowerApp(rumps.App):
         try:
             sample = read_battery_sample()
         except BatteryReadError as error:
+            self._title_prefix = "Batt ERR"
+            self._title_metric_parts = []
             self.title = "Batt ERR"
             self._status_item.title = f"Read error: {error}"
             self._speed_item.title = "Speed: --"
@@ -240,7 +316,7 @@ class MacBookPowerApp(rumps.App):
             if self._display_settings.show_cpu_temperature
             else None
         )
-        self.title = self._compose_title(
+        self._compose_title(
             percent=sample.percent,
             state_short=state_short,
             eta_label=eta_label,
@@ -248,6 +324,7 @@ class MacBookPowerApp(rumps.App):
             battery_temp_c=sample.battery_temperature_c,
             cpu_temp_c=cpu_temp_c,
         )
+        self._render_title()
 
         battery_temp_label = _format_temperature(
             sample.battery_temperature_c,
@@ -269,6 +346,7 @@ class MacBookPowerApp(rumps.App):
             f"{sample.current_capacity_mah}mAh / {sample.max_capacity_mah}mAh"
         )
         self._updated_item.title = f"Updated: {sample.timestamp.strftime('%H:%M:%S')}"
+        self._style_menubar_button()
 
     def _update_install_button_visibility(self) -> None:
         """Sync CPU temperature UI visibility with tool availability.
@@ -308,9 +386,10 @@ class MacBookPowerApp(rumps.App):
         power_w: float,
         battery_temp_c: float | None,
         cpu_temp_c: float | None,
-    ) -> str:
-        parts: list[str] = [f"{percent:3.0f}%"]
+    ) -> None:
+        """Build the title prefix + rotatable metric tokens into instance state."""
         show_icons = self._display_settings.show_metric_icons
+        parts: list[str] = []
 
         if self._display_settings.show_state:
             state_icon = {
@@ -350,8 +429,96 @@ class MacBookPowerApp(rumps.App):
             )
             parts.append(_metric_text(cpu_temp_text, "🧠", show_icons, label="CPU"))
 
-        separator = " " if show_icons else " | "
-        return separator.join(parts)
+        self._title_prefix = f"{percent:3.0f}%"
+        self._title_metric_parts = parts
+        self._title_separator = " " if show_icons else " | "
+
+    def _render_title(self) -> None:
+        """Render the menubar title, rotating one metric at a time when enabled."""
+        prefix = self._title_prefix
+        parts = self._title_metric_parts
+        separator = self._title_separator
+
+        if not parts:
+            self.title = prefix
+            return
+
+        if self._display_settings.rotate_metrics and len(parts) > 1:
+            # Pad every token to the widest one so the menubar width stays fixed
+            # as values rotate.
+            width = max(len(part) for part in parts)
+            current = parts[self._rotate_index % len(parts)].center(width)
+            text = f"{prefix} {current}"
+            if not self._set_monospaced_title(text):
+                self.title = text
+        else:
+            self.title = separator.join([prefix, *parts])
+
+    def _set_monospaced_title(self, text: str) -> bool:
+        """Set the menubar title in a monospaced font for fixed-width rotation.
+
+        Returns ``False`` (so the caller can fall back to a plain title) when the
+        status-bar button or monospaced font API is unavailable.
+        """
+        try:
+            button = self._nsapp.nsstatusitem.button()
+            font = NSFont.monospacedSystemFontOfSize_weight_(
+                NSFont.systemFontSize(), 0.0
+            )
+            attributed = NSAttributedString.alloc().initWithString_attributes_(
+                text, {NSFontAttributeName: font}
+            )
+            button.setAttributedTitle_(attributed)
+        except Exception:
+            return False
+        # Keep rumps' cached title in sync without triggering a plain re-render.
+        self._title = text
+        return True
+
+    def _advance_rotation(self, _: object | None) -> None:
+        """Timer callback that cycles the visible metric when rotation is on."""
+        if self._paused or not self._display_settings.rotate_metrics:
+            return
+        if len(self._title_metric_parts) <= 1:
+            return
+        self._rotate_index += 1
+        self._render_title()
+
+    def _style_menubar_button(self) -> None:
+        """Keep the menubar icon crisp on Retina and draw the rounded border."""
+        try:
+            button = self._nsapp.nsstatusitem.button()
+        except AttributeError:
+            return
+
+        # The icon PNG is rendered at 3x; pin its point size once so AppKit uses
+        # the extra pixels for a sharp image instead of upscaling an 18px bitmap.
+        if not self._icon_sized:
+            with suppress(Exception):
+                image = button.image()
+                if image is not None:
+                    image.setSize_((18.0, 18.0))
+                    image.setTemplate_(True)
+                    self._icon_sized = True
+
+        # Only touch the layer once; the rounded border is always on.
+        if self._border_styled:
+            return
+        with suppress(Exception):
+            button.setWantsLayer_(True)
+            layer = button.layer()
+            layer.setCornerRadius_(5.0)
+            layer.setBorderWidth_(1.0)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                border_color = (
+                    NSColor.labelColor()
+                    .colorWithAlphaComponent_(0.35)
+                    .CGColor()
+                )
+            layer.setBorderColor_(border_color)
+            self._border_styled = True
+
 
     def _bind_display_toggle(
         self,
@@ -404,6 +571,10 @@ class MacBookPowerApp(rumps.App):
 
     def _toggle_use_fahrenheit(self, sender: rumps.MenuItem) -> None:
         self._toggle_setting(sender, key="use_fahrenheit")
+
+    def _toggle_rotate_metrics(self, sender: rumps.MenuItem) -> None:
+        self._rotate_index = 0
+        self._toggle_setting(sender, key="rotate_metrics")
 
     def _install_cpu_temperature_tool(self, _: rumps.MenuItem) -> None:
         """Install CPU temperature tool in background thread."""
@@ -614,6 +785,16 @@ def _refresh_interval_seconds() -> float:
     return max(1.0, value)
 
 
+def _rotate_interval_seconds() -> float:
+    """Resolve title rotation interval from env var with safe defaults."""
+    raw = os.getenv("MACBOOK_POWER_ROTATE_SECONDS", "4")
+    try:
+        value = float(raw)
+    except ValueError:
+        return 4.0
+    return max(1.0, value)
+
+
 def _format_temperature(value_c: float | None, *, use_fahrenheit: bool = False) -> str:
     """Format temperature for display."""
     if value_c is None:
@@ -663,6 +844,7 @@ def _load_display_settings() -> DisplaySettings:
         show_cpu_temperature=bool(payload.get("show_cpu_temperature", False)),
         show_metric_icons=bool(payload.get("show_metric_icons", True)),
         use_fahrenheit=bool(payload.get("use_fahrenheit", False)),
+        rotate_metrics=bool(payload.get("rotate_metrics", False)),
     )
 
 
